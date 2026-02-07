@@ -34,13 +34,14 @@ type Profile = {
   city: string;
   matches_played?: number;
   wins?: number;
-  age_range?: string | null;
-  age_visible?: boolean;
-  wins?: number;
   draws?: number;
   losses?: number;
   motm_count?: number;
   trust_score?: number;
+  age_range?: string | null;
+  age_visible?: boolean;
+};
+
 };
 const AGE_LABEL: Record<string, string> = {
   'u14': 'أقل من 14',
