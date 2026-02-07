@@ -42,7 +42,6 @@ type Profile = {
   age_visible?: boolean;
 };
 
-};
 const AGE_LABEL: Record<string, string> = {
   'u14': 'أقل من 14',
   '14_17': '14 - 17',
