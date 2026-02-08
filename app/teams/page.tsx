@@ -13,7 +13,7 @@ export default function TeamsPage() {
   const [signedIn, setSignedIn] = useState(false);
 
   async function load() {
-    let query = supabase.from('teams').select('*').order('created_at', { ascending:false });
+    let query = supabase.from('teams').select('*').is('deleted_at', null).order('created_at', { ascending:false });
     if (qCity) query = query.ilike('city', `%${qCity}%`);
     if (qLevel) query = query.eq('level', qLevel);
     const { data, error } = await query;

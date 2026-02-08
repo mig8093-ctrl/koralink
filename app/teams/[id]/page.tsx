@@ -4,7 +4,14 @@ import { supabase } from '@/lib/supabase';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 
-type Team = { id: string; name: string; city: string; level: string; captain_id: string };
+type Team = {
+  id: string;
+  name: string;
+  city: string;
+  level: string;
+  captain_id: string;
+  deleted_at?: string | null;
+};
 
 type Profile = {
   display_name: string;
@@ -48,19 +55,44 @@ export default function TeamPage() {
   );
 
   async function load() {
+    // 1) لازم تسجيل دخول
     const { data: u } = await supabase.auth.getUser();
-    setMyId(u.user?.id ?? null);
+    const uid = u.user?.id ?? null;
+    setMyId(uid);
 
-    const { data: t, error: e1 } = await supabase.from('teams').select('*').eq('id', teamId).single();
+    if (!uid) {
+      window.location.href = '/login';
+      return;
+    }
+
+    // 2) جيب الفريق فقط لو مش محذوف
+    const { data: t, error: e1 } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('id', teamId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
     if (e1) {
       alert(e1.message);
       return;
     }
+
+    // لو الفريق غير موجود/محذوف
+    if (!t) {
+      setTeam(null);
+      setMembers([]);
+      return;
+    }
+
     setTeam(t as any);
 
+    // 3) أعضاء الفريق
     const { data: m, error: e2 } = await supabase
       .from('team_members')
-      .select('player_id, role, profiles:profiles(display_name, player_id, position, level, city, age_range, age_visible)')
+      .select(
+        'player_id, role, profiles:profiles(display_name, player_id, position, level, city, age_range, age_visible)'
+      )
       .eq('team_id', teamId);
 
     if (e2) {
@@ -84,7 +116,12 @@ export default function TeamPage() {
     setLoading(true);
 
     // find profile by player_id
-    const { data: p, error: e1 } = await supabase.from('profiles').select('id').eq('player_id', pid).maybeSingle();
+    const { data: p, error: e1 } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('player_id', pid)
+      .maybeSingle();
+
     if (e1) {
       setLoading(false);
       alert(e1.message);
@@ -112,20 +149,57 @@ export default function TeamPage() {
     }
   }
 
+  async function handleDeleteTeam() {
+    if (!isCaptain) return;
+
+    const ok = confirm('هل أنت متأكد من حذف الفريق؟');
+    if (!ok) return;
+
+    setLoading(true);
+    const { error } = await supabase.rpc('delete_team', { p_team_id: teamId });
+    setLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert('✅ تم حذف الفريق');
+    window.location.href = '/teams';
+  }
+
   return (
     <>
       <Nav />
       <div className="card">
         {!team ? (
-          <p>تحميل...</p>
+          <>
+            <h1>الفريق غير موجود</h1>
+            <p className="small">
+              ممكن يكون الفريق اتحذف أو الرابط غلط.
+            </p>
+            <a className="btn" href="/teams">رجوع للفرق</a>
+          </>
         ) : (
           <>
             <h1>{team.name}</h1>
-            <div className="row">
+            <div className="grid">
               <span className="badge">{team.city}</span>
               <span className="badge">{team.level}</span>
               {isCaptain && <span className="badge">Captain</span>}
             </div>
+
+            {isCaptain && (
+              <div style={{ height: 10 }} />
+            )}
+
+            {isCaptain && (
+              <div className="row" style={{ justifyContent: 'flex-start' }}>
+                <button className="btn danger" onClick={handleDeleteTeam} disabled={loading}>
+                  {loading ? '...' : 'حذف الفريق'}
+                </button>
+              </div>
+            )}
 
             <hr />
             <h2>الأعضاء</h2>
