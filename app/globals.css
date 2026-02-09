@@ -1,6 +1,7 @@
 /* =========================
    KoraLink Neon/Glass Theme
    FULL FILE + Light/Dark toggle
+   FIX: Mobile white screen (background moved to ::before)
    Uses: document.documentElement.dataset.theme = 'dark' | 'light'
    ========================= */
 
@@ -46,16 +47,17 @@
 }
 
 /* -------- LIGHT (day mode) -------- */
+/* ✅ خليته Mint مريح مش أبيض قوي */
 html[data-theme="light"]{
-  --bg0:#eaf8f0;
-  --bg1:#dff5ea;
+  --bg0:#e6f7ef;
+  --bg1:#d6f2e6;
 
   --text:#062014;
   --muted:#355a45;
 
   /* surfaces */
-  --card: rgba(255,255,255,0.80);
-  --card2: rgba(255,255,255,0.88);
+  --card: rgba(255,255,255,0.82);
+  --card2: rgba(255,255,255,0.90);
 
   --border: rgba(10, 40, 24, 0.12);
 
@@ -66,17 +68,17 @@ html[data-theme="light"]{
   --shadow: 0 12px 28px rgba(0,0,0,.14);
 
   /* background overlays (أخف بكثير) */
-  --bgOverlayA: rgba(255,255,255,0.72);
-  --bgOverlayB: rgba(255,255,255,0.72);
+  --bgOverlayA: rgba(240,255,248,0.70);
+  --bgOverlayB: rgba(240,255,248,0.70);
 
-  --glowA: rgba(20,201,101,0.14);
-  --glowB: rgba(0,169,214,0.10);
-  --glowC: rgba(20,201,101,0.10);
+  --glowA: rgba(20,201,101,0.10);
+  --glowB: rgba(0,169,214,0.08);
+  --glowC: rgba(20,201,101,0.08);
 
-  --inputBg: rgba(255,255,255,0.82);
+  --inputBg: rgba(255,255,255,0.86);
   --inputBorder: rgba(10,40,24,0.16);
 
-  --navBg: rgba(255,255,255,0.70);
+  --navBg: rgba(255,255,255,0.74);
   --navBorder: rgba(10, 40, 24, 0.10);
 }
 
@@ -84,13 +86,32 @@ html[data-theme="light"]{
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
 
+/* ✅ يمنع أي فلاش/بياض نهائياً */
+html{
+  background: var(--bg0);
+}
+
+/* ✅ نخلي body بدون background نهائياً (عشان الموبايل) */
 body{
   margin:0;
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
   overflow-x:hidden;
 
-  /* ✅ Background: image + overlay + soft glow */
+  min-height: 100dvh;
+
+  background: none !important;
+  background-color: var(--bg0) !important; /* fallback ثابت */
+}
+
+/* ✅ الخلفية هنا: ثابتة + آمنة للموبايل */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  /* حتى لو الصورة ما تحملتش: يضل فيه Gradient */
   background:
     linear-gradient(180deg, var(--bgOverlayA), var(--bgOverlayB)),
     radial-gradient(900px 600px at 15% 15%, var(--glowA), transparent 60%),
@@ -102,8 +123,8 @@ body{
   background-position: center;
   background-repeat: no-repeat;
 
-  /* ✅ fixed يعمل مشاكل على بعض الموبايلات */
-  background-attachment: scroll;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 a{ color: inherit; }
