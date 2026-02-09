@@ -1,6 +1,7 @@
 /* =========================
    KoraLink Neon/Glass Theme
    Cleaner layout + Better mobile + Less overlap
+   FIX: Mobile white background while scrolling
    ========================= */
 
 :root{
@@ -29,11 +30,27 @@
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
 
+html{
+  background: var(--bg0); /* يمنع أي فلاش أبيض */
+}
+
 body{
   margin:0;
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
   overflow-x:hidden;
+
+  min-height: 100dvh;
+  background: none;              /* ✅ لا تضع الخلفية هنا */
+  background-color: var(--bg0);  /* ✅ fallback ثابت */
+}
+
+/* ✅ Mobile-safe fixed background (يحل مشكلة الأبيض أثناء السكرول) */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
 
   background:
     linear-gradient(180deg, rgba(6,19,10,0.90), rgba(6,19,10,0.90)),
@@ -46,8 +63,8 @@ body{
   background-position: center;
   background-repeat: no-repeat;
 
-  /* ✅ مهم: fixed يسبب مشاكل على الموبايل */
-  background-attachment: scroll;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* ===== Helpers ===== */
@@ -57,7 +74,6 @@ body{
   padding-bottom: 32px;
 }
 
-/* row: خليه مرن لكن ما يضغطش */
 .row{
   display:flex;
   gap:12px;
@@ -65,7 +81,11 @@ body{
   align-items: center;
 }
 
-.small{ color: var(--muted); font-size: 13px; line-height:1.6; }
+.small{
+  color: var(--muted);
+  font-size: 13px;
+  line-height:1.6;
+}
 
 h1{ margin:0 0 8px; font-size: 26px; letter-spacing:-0.2px; }
 h2{ margin:0 0 8px; font-size: 18px; }
@@ -190,7 +210,10 @@ hr{
   box-shadow: 0 18px 44px rgba(57,255,136,0.22);
 }
 
-.btn:active{ transform: translateY(0px); filter: brightness(0.98); }
+.btn:active{
+  transform: translateY(0px);
+  filter: brightness(0.98);
+}
 
 .btn[disabled]{
   opacity:0.55;
