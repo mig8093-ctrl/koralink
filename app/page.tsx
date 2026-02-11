@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 type FAQ = { q: string; a: string };
 
@@ -11,29 +11,37 @@ export default function HomePage() {
   const [signedIn, setSignedIn] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  // تفاعل بسيط: FAQ accordion
-  const faqs: FAQ[] = useMemo(() => ([
-    {
-      q: 'شن الفكرة من KoraLink؟',
-      a: 'تنظيم مباريات الخماسي بسهولة: فرق، دعوات بالـ Player ID، تحديات، تحديد موقع الملعب، وتقييم + بلاغات.'
-    },
-    {
-      q: 'هل نقدر نلعب بدون فريق؟',
-      a: 'إيه، تقدر تكون “Free Agent” في السوق وتستقبل عروض من كباتن فرق محتاجين لاعب.'
-    },
-    {
-      q: 'شن يعني Player ID؟',
-      a: 'رقم/رمز خاص فيك تعطيه لصحابك باش يضيفوك للفريق بسرعة بدون بحث طويل.'
-    },
-    {
-      q: 'هل في قروبات وفوضى؟',
-      a: 'لا. التواصل يكون منظم داخل التطبيق حسب الدعوات والتحديات فقط.'
-    },
-  ]), []);
+  // stats
+  const [stats, setStats] = useState<{ users: number; teams: number; matches: number } | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  // FAQ accordion
+  const faqs: FAQ[] = useMemo(
+    () => [
+      {
+        q: 'شن الفكرة من KoraLink؟',
+        a: 'تنظيم مباريات الخماسي بسهولة: فرق، دعوات بالـ Player ID، تحديات، تحديد موقع الملعب، وتقييم + بلاغات.',
+      },
+      {
+        q: 'هل نقدر نلعب بدون فريق؟',
+        a: 'إيه. تقدر تكون في السوق كـ Free Agent وتستقبل عروض من كباتن فرق محتاجين لاعب.',
+      },
+      {
+        q: 'شن يعني Player ID؟',
+        a: 'رمز خاص فيك تعطيه لصحابك باش يضيفوك للفريق بسرعة بدون ما يدورو عليك بالاسم.',
+      },
+      {
+        q: 'هل KoraLink يشتغل للمباريات الخماسي فقط؟',
+        a: 'إيه. التركيز كامل على الخماسي (5 + حارس) باش التجربة تكون دقيقة ومضبوطة.',
+      },
+    ],
+    []
+  );
 
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   useEffect(() => {
+    // session
     supabase.auth.getSession().then(({ data }) => {
       setSignedIn(!!data.session);
       setChecking(false);
@@ -42,6 +50,40 @@ export default function HomePage() {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setSignedIn(!!session);
     });
+
+    // ---- Public Stats (cached) ----
+    const CACHE_KEY = 'koralink_public_stats_v1';
+    const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+    async function loadStats() {
+      try {
+        // 1) try cache
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached?.ts && Date.now() - cached.ts < CACHE_TTL_MS && cached?.data) {
+            setStats(cached.data);
+          }
+        }
+
+        // 2) fetch fresh
+        const { data, error } = await supabase.rpc('get_public_stats');
+        if (error) throw error;
+
+        const parsed = {
+          users: Number(data?.users ?? 0),
+          teams: Number(data?.teams ?? 0),
+          matches: Number(data?.matches ?? 0),
+        };
+
+        setStats(parsed);
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: parsed }));
+      } catch (e: any) {
+        setStatsError(e?.message ?? 'تعذر تحميل الإحصائيات');
+      }
+    }
+
+    loadStats();
 
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -70,7 +112,9 @@ export default function HomePage() {
       {/* HERO */}
       <div className="row" style={{ alignItems: 'stretch' }}>
         <div style={{ flex: '1 1 420px', minWidth: 280 }}>
-          <div className="badge" style={{ marginBottom: 10 }}>⚽ مباريات الخماسي • 5 + حارس</div>
+          <div className="badge" style={{ marginBottom: 10 }}>
+            ⚽ مباريات الخماسي • 5 + حارس
+          </div>
 
           <h1 style={{ fontSize: 34, lineHeight: 1.15 }}>
             نظّم لعبتك… <span className="neon-text">بكل سهولة</span>
@@ -80,16 +124,46 @@ export default function HomePage() {
             KoraLink يلمّ الشلّة ويفكك من القروبات: فريقك، لاعبينك، وتحدّياتك… كلّه في مكان واحد.
           </p>
 
+          {/* STATS BAR */}
+          <div className="row" style={{ marginTop: 12 }}>
+            <div className="card-soft" style={{ flex: '1 1 170px', padding: 12 }}>
+              <div className="small">👤 مستخدمين</div>
+              <b style={{ fontSize: 20 }}>{stats ? stats.users.toLocaleString() : '—'}</b>
+            </div>
+            <div className="card-soft" style={{ flex: '1 1 170px', padding: 12 }}>
+              <div className="small">👥 فرق</div>
+              <b style={{ fontSize: 20 }}>{stats ? stats.teams.toLocaleString() : '—'}</b>
+            </div>
+            <div className="card-soft" style={{ flex: '1 1 170px', padding: 12 }}>
+              <div className="small">⚽ مباريات</div>
+              <b style={{ fontSize: 20 }}>{stats ? stats.matches.toLocaleString() : '—'}</b>
+            </div>
+            <div className="card-soft" style={{ flex: '1 1 220px', padding: 12 }}>
+              <div className="small">📍 الملاعب</div>
+              <span className="badge">قريباً</span>
+            </div>
+          </div>
+
+          {statsError ? (
+            <p className="small" style={{ marginTop: 8, opacity: 0.85 }}>
+              (ملاحظة تقنية: تعذر تحميل الإحصائيات حالياً)
+            </p>
+          ) : null}
+
           <div className="row" style={{ marginTop: 14 }}>
             {!signedIn ? (
               <button className="btn" onClick={signInWithGoogle} disabled={loading}>
                 {loading ? '...' : 'متابعة عبر Google'}
               </button>
             ) : (
-              <Link className="btn secondary" href="/teams">دخول للبرنامج</Link>
+              <Link className="btn secondary" href="/teams">
+                دخول للبرنامج
+              </Link>
             )}
 
-            <a className="btn secondary" href="#how">كيف تشتغل؟</a>
+            <a className="btn secondary" href="#how">
+              كيف تشتغل؟
+            </a>
           </div>
 
           <p className="small" style={{ marginTop: 10 }}>
@@ -101,6 +175,7 @@ export default function HomePage() {
         <div className="card-soft" style={{ flex: '1 1 420px', minWidth: 280 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <b>Preview</b>
+            <span className="badge">MVP</span>
           </div>
 
           <div style={{ height: 12 }} />
@@ -110,13 +185,18 @@ export default function HomePage() {
               <span className="badge">فريق: النصر الخماسي</span>
               <span className="badge">Tripoli</span>
             </div>
+
             <div style={{ height: 10 }} />
+
             <div className="row">
               <span className="badge">⚔️ تحدّي</span>
               <span className="badge">🗺️ موقع الملعب</span>
               <span className="badge">⭐ تقييم</span>
+              <span className="badge">🚨 بلاغ</span>
             </div>
+
             <div style={{ height: 10 }} />
+
             <p className="small" style={{ margin: 0 }}>
               “نحتاج حارس اليوم” → يطلعلك في السوق، والكابتن يرسل دعوة بالـPlayer ID.
             </p>
@@ -244,7 +324,9 @@ export default function HomePage() {
             {loading ? '...' : 'تسجيل الدخول'}
           </button>
         ) : (
-          <Link className="btn sm secondary" href="/teams">دخول للبرنامج</Link>
+          <Link className="btn sm secondary" href="/teams">
+            دخول للبرنامج
+          </Link>
         )}
       </div>
     </div>
