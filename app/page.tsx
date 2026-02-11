@@ -2,26 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      // لو مسجل يدخل مباشرة للفرق
-      if (data.session) window.location.replace('/teams');
-      else setChecking(false);
+      setSignedIn(!!data.session);
+      setChecking(false);
     });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedIn(!!session);
+    });
+
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   async function signInWithGoogle() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     setLoading(false);
     if (error) alert(error.message);
@@ -41,25 +46,23 @@ export default function HomePage() {
       <h1>KoraLink</h1>
       <p className="small">
         KoraLink يساعدك تنظم مباريات الخماسي (5 + حارس) بدون قروبات وفوضى.
-        <br />
-        • كوّن فريقك
-        <br />
-        • ضيف لاعبين بالـ Player ID
-        <br />
-        • تحدّى فرق ثانية وحدد مكان الملعب
-        <br />
-        • تقييم الفرق + بلاغات على الفرق المخالفة
+        <br />• كوّن فريقك
+        <br />• ضيف لاعبين بالـ Player ID
+        <br />• تحدّى فرق ثانية وحدد مكان الملعب
+        <br />• تقييم الفرق + بلاغات على الفرق المخالفة
       </p>
 
       <hr />
 
-      <button className="btn" onClick={signInWithGoogle} disabled={loading}>
-        {loading ? '...' : 'متابعة عبر Google'}
-      </button>
-
-      <p className="small" style={{ marginTop: 12 }}>
-        بالتسجيل أنت توافق إن بياناتك تُستخدم لتنظيم المباريات فقط.
-      </p>
+      {!signedIn ? (
+        <button className="btn" onClick={signInWithGoogle} disabled={loading}>
+          {loading ? '...' : 'متابعة عبر Google'}
+        </button>
+      ) : (
+        <div className="row">
+          <Link className="btn secondary" href="/teams">دخول للبرنامج</Link>
+        </div>
+      )}
     </div>
   );
 }
