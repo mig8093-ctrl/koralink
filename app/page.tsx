@@ -101,7 +101,6 @@ export default function HomePage() {
         <div className="card-soft" style={{ flex: '1 1 420px', minWidth: 280 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <b>Preview</b>
-            <span className="badge">MVP</span>
           </div>
 
           <div style={{ height: 12 }} />
